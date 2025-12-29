@@ -23,6 +23,19 @@ ImageProcessor::ImageProcessor(QWidget *parent)
     createActions();
     createMenus();
     createToolBars();
+
+    statusLabel = new QLabel;
+    statusLabel->setText(tr("指標位置:"));
+    statusLabel->setFixedWidth(100);
+    MousePosLabel = new QLabel;
+    MousePosLabel->setText(tr(" "));
+    MousePosLabel->setFixedWidth(100);
+    statusBar()->addPermanentWidget(statusLabel);
+    statusBar()->addPermanentWidget(MousePosLabel);
+    setMouseTracking(true);
+    imgWin->setMouseTracking(true);
+    central->setMouseTracking(true);
+
 }
 
 ImageProcessor::~ImageProcessor() {}
@@ -124,4 +137,31 @@ void ImageProcessor::showGeometryTransform(){
         gWin->srcImg=img;
     gWin->inWin->setPixmap(QPixmap::fromImage(gWin->srcImg));
     gWin->show();
+}
+
+void ImageProcessor::mouseDoubleClickEvent(QMouseEvent *event){
+    QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")";
+    statusBar()->showMessage(tr("雙擊:")+str,1000);
+}
+void ImageProcessor::mouseMoveEvent(QMouseEvent *event){
+    int gray = qGray(img.pixel(event->x(),event->y()));
+    QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")" + " = "+QString::number(gray);
+
+    MousePosLabel->setText(str);
+}
+void ImageProcessor::mousePressEvent(QMouseEvent *event){
+    QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")";
+    if(event->button()==Qt::LeftButton){
+        statusBar()->showMessage(tr("左鍵:")+str,1000);
+    }
+    else if(event->button()==Qt::RightButton){
+        statusBar()->showMessage(tr("右鍵:")+str,1000);
+    }
+    else if(event->button()==Qt::MiddleButton){
+        statusBar()->showMessage(tr("中鍵:")+str,1000);
+    }
+}
+void ImageProcessor::mouseReleaseEvent(QMouseEvent *event){
+    QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")";
+    statusBar()->showMessage(tr("釋放:")+str,1000);
 }
