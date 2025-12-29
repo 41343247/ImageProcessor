@@ -1,16 +1,37 @@
 #include "imageprocessor.h"
 #include "imagetransform.h"
+#include "imageeditwindow.h"
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QMenuBar>
 #include <QFileDialog>
 #include <QDebug>
 
 ImageProcessor::ImageProcessor(QWidget *parent)
     : QMainWindow(parent)
+    , zoomLevel(1.0)
+    , isDragging(false)
 {
     setWindowTitle(tr("影像處理"));
     central = new QWidget();
-    QHBoxLayout *mainLayout = new QHBoxLayout(central);
+    QVBoxLayout *mainLayout = new QVBoxLayout(central);
+    
+    // Zoom control layout
+    QHBoxLayout *zoomLayout = new QHBoxLayout();
+    zoomLabel = new QLabel(tr("縮放等級: 100%"));
+    zoomLabel->setFixedWidth(120);
+    zoomSlider = new QSlider(Qt::Horizontal);
+    zoomSlider->setMinimum(10);
+    zoomSlider->setMaximum(400);
+    zoomSlider->setValue(100);
+    zoomSlider->setTickPosition(QSlider::TicksBelow);
+    zoomSlider->setTickInterval(50);
+    connect(zoomSlider, SIGNAL(valueChanged(int)), this, SLOT(zoomChanged(int)));
+    
+    zoomLayout->addWidget(zoomLabel);
+    zoomLayout->addWidget(zoomSlider);
+    mainLayout->addLayout(zoomLayout);
+    
     imgWin = new QLabel();
     QPixmap *initPixmap = new QPixmap(300,200);
     gWin = new ImageTransform();
@@ -98,7 +119,11 @@ void ImageProcessor::loadFile(QString filename)
     QByteArray ba = filename.toLatin1();
     printf("FN:%s\n",(char *) ba.data());
     img.load(filename);
-    imgWin->setPixmap(QPixmap::fromImage(img));
+    
+    // Apply zoom level
+    QImage scaledImg = img.scaled(img.width() * zoomLevel, img.height() * zoomLevel, 
+                                   Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    imgWin->setPixmap(QPixmap::fromImage(scaledImg));
 }
 
 void ImageProcessor::showOpenFile()
@@ -144,15 +169,30 @@ void ImageProcessor::mouseDoubleClickEvent(QMouseEvent *event){
     statusBar()->showMessage(tr("雙擊:")+str,1000);
 }
 void ImageProcessor::mouseMoveEvent(QMouseEvent *event){
-    int gray = qGray(img.pixel(event->x(),event->y()));
-    QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")" + " = "+QString::number(gray);
-
-    MousePosLabel->setText(str);
+    if (!img.isNull() && event->x() >= 0 && event->x() < img.width() && 
+        event->y() >= 0 && event->y() < img.height()) {
+        int gray = qGray(img.pixel(event->x(),event->y()));
+        QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")" + " = "+QString::number(gray);
+        MousePosLabel->setText(str);
+    }
+    
+    // Detect dragging
+    if (!img.isNull() && (event->buttons() & Qt::LeftButton)) {
+        int distance = (event->pos() - dragStartPos).manhattanLength();
+        if (distance >= 10) {  // Minimum drag distance
+            isDragging = true;
+        }
+    }
 }
 void ImageProcessor::mousePressEvent(QMouseEvent *event){
     QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")";
     if(event->button()==Qt::LeftButton){
         statusBar()->showMessage(tr("左鍵:")+str,1000);
+        // Start drag detection
+        if (!img.isNull()) {
+            dragStartPos = event->pos();
+            isDragging = false;
+        }
     }
     else if(event->button()==Qt::RightButton){
         statusBar()->showMessage(tr("右鍵:")+str,1000);
@@ -164,4 +204,36 @@ void ImageProcessor::mousePressEvent(QMouseEvent *event){
 void ImageProcessor::mouseReleaseEvent(QMouseEvent *event){
     QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")";
     statusBar()->showMessage(tr("釋放:")+str,1000);
+    
+    // If dragging occurred, open edit window
+    if (isDragging && !img.isNull()) {
+        openEditWindow();
+        isDragging = false;
+    }
+}
+
+void ImageProcessor::zoomChanged(int value)
+{
+    zoomLevel = value / 100.0;
+    zoomLabel->setText(tr("縮放等級: ") + QString::number(value) + "%");
+    
+    // Re-display image with new zoom level
+    if (!img.isNull()) {
+        QImage scaledImg = img.scaled(img.width() * zoomLevel, img.height() * zoomLevel, 
+                                       Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        imgWin->setPixmap(QPixmap::fromImage(scaledImg));
+    }
+}
+
+void ImageProcessor::openEditWindow()
+{
+    if (!img.isNull()) {
+        // Create enlarged image based on zoom level
+        QImage enlargedImg = img.scaled(img.width() * zoomLevel, img.height() * zoomLevel, 
+                                        Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        ImageEditWindow *editWin = new ImageEditWindow(enlargedImg);
+        editWin->setAttribute(Qt::WA_DeleteOnClose);
+        editWin->show();
+        statusBar()->showMessage(tr("已開啟影像編輯視窗"), 2000);
+    }
 }

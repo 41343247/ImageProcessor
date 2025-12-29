@@ -9,8 +9,10 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QStatusBar>
+#include <QSlider>
 #include "imagetransform.h"
 #include "mouseevent.h"
+#include "imageeditwindow.h"
 
 class ImageProcessor : public QMainWindow
 {
@@ -30,6 +32,8 @@ private slots:
     void bigFile();
     void smallFile();
     void showGeometryTransform();
+    void zoomChanged(int value);
+    void openEditWindow();
 
 private:
     ImageTransform *gWin;
@@ -49,6 +53,13 @@ private:
 
     QLabel  *statusLabel;
     QLabel  *MousePosLabel;
+    
+    QSlider *zoomSlider;
+    QLabel  *zoomLabel;
+    double  zoomLevel;
+    
+    QPoint  dragStartPos;
+    bool    isDragging;
 
 protected:
     void mouseDoubleClickEvent(QMouseEvent *event);

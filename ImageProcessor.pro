@@ -12,12 +12,14 @@ SOURCES += \
     imagetransform.cpp \
     main.cpp \
     imageprocessor.cpp \
-    mouseevent.cpp
+    mouseevent.cpp \
+    imageeditwindow.cpp
 
 HEADERS += \
     imageprocessor.h \
     imagetransform.h \
-    mouseevent.h
+    mouseevent.h \
+    imageeditwindow.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
