@@ -36,6 +36,9 @@ private slots:
     void openEditWindow();
 
 private:
+    QImage scaleImage(const QImage &image, double zoom);
+
+private:
     ImageTransform *gWin;
     MouseEvent     *mouse;
     QWidget     *central;

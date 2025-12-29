@@ -128,12 +128,16 @@ void ImageEditWindow::changeBrushSize(int size)
     statusBar()->showMessage(tr("筆刷大小: ") + QString::number(size), 1000);
 }
 
+QPoint ImageEditWindow::getLabelPosition(QMouseEvent *event) const
+{
+    return imageLabel->mapFromGlobal(event->globalPos());
+}
+
 void ImageEditWindow::mousePressEvent(QMouseEvent *event)
 {
     if (brushMode && event->button() == Qt::LeftButton) {
         drawing = true;
-        // Convert global position to image label coordinates
-        QPoint labelPos = imageLabel->mapFromGlobal(event->globalPos());
+        QPoint labelPos = getLabelPosition(event);
         
         // Check if the click is within the image label
         if (imageLabel->rect().contains(labelPos)) {
@@ -145,7 +149,7 @@ void ImageEditWindow::mousePressEvent(QMouseEvent *event)
 void ImageEditWindow::mouseMoveEvent(QMouseEvent *event)
 {
     if (brushMode && drawing && (event->buttons() & Qt::LeftButton)) {
-        QPoint labelPos = imageLabel->mapFromGlobal(event->globalPos());
+        QPoint labelPos = getLabelPosition(event);
         
         if (imageLabel->rect().contains(labelPos)) {
             drawLineTo(labelPos);

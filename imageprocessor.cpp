@@ -121,9 +121,13 @@ void ImageProcessor::loadFile(QString filename)
     img.load(filename);
     
     // Apply zoom level
-    QImage scaledImg = img.scaled(img.width() * zoomLevel, img.height() * zoomLevel, 
-                                   Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    imgWin->setPixmap(QPixmap::fromImage(scaledImg));
+    imgWin->setPixmap(QPixmap::fromImage(scaleImage(img, zoomLevel)));
+}
+
+QImage ImageProcessor::scaleImage(const QImage &image, double zoom)
+{
+    return image.scaled(image.width() * zoom, image.height() * zoom, 
+                        Qt::KeepAspectRatio, Qt::SmoothTransformation);
 }
 
 void ImageProcessor::showOpenFile()
@@ -219,9 +223,7 @@ void ImageProcessor::zoomChanged(int value)
     
     // Re-display image with new zoom level
     if (!img.isNull()) {
-        QImage scaledImg = img.scaled(img.width() * zoomLevel, img.height() * zoomLevel, 
-                                       Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        imgWin->setPixmap(QPixmap::fromImage(scaledImg));
+        imgWin->setPixmap(QPixmap::fromImage(scaleImage(img, zoomLevel)));
     }
 }
 
@@ -229,9 +231,7 @@ void ImageProcessor::openEditWindow()
 {
     if (!img.isNull()) {
         // Create enlarged image based on zoom level
-        QImage enlargedImg = img.scaled(img.width() * zoomLevel, img.height() * zoomLevel, 
-                                        Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        ImageEditWindow *editWin = new ImageEditWindow(enlargedImg);
+        ImageEditWindow *editWin = new ImageEditWindow(scaleImage(img, zoomLevel));
         editWin->setAttribute(Qt::WA_DeleteOnClose);
         editWin->show();
         statusBar()->showMessage(tr("已開啟影像編輯視窗"), 2000);

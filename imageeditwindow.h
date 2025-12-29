@@ -38,6 +38,7 @@ private:
     void createActions();
     void createToolBar();
     void drawLineTo(const QPoint &endPoint);
+    QPoint getLabelPosition(QMouseEvent *event) const;
 
     QImage originalImage;
     QImage editedImage;
