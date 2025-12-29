@@ -1,12 +1,15 @@
 #include "imageprocessor.h"
 #include "imagetransform.h"
+#include "zoomwindow.h"
 #include <QHBoxLayout>
 #include <QMenuBar>
 #include <QFileDialog>
+#include <QPainter>
 #include <QDebug>
 
 ImageProcessor::ImageProcessor(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent),
+      isDragging(false)
 {
     setWindowTitle(tr("影像處理"));
     central = new QWidget();
@@ -148,11 +151,27 @@ void ImageProcessor::mouseMoveEvent(QMouseEvent *event){
     QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")" + " = "+QString::number(gray);
 
     MousePosLabel->setText(str);
+    
+    // Update drag selection
+    if (isDragging) {
+        dragEndPoint = event->pos();
+        selectionRect = QRect(dragStartPoint, dragEndPoint).normalized();
+        update(); // Trigger repaint to show selection rectangle
+    }
 }
 void ImageProcessor::mousePressEvent(QMouseEvent *event){
     QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")";
     if(event->button()==Qt::LeftButton){
         statusBar()->showMessage(tr("左鍵:")+str,1000);
+        
+        // Start drag selection if mouse is over the image
+        QPoint labelPos = imgWin->mapFrom(this, event->pos());
+        if (!img.isNull() && imgWin->rect().contains(labelPos)) {
+            isDragging = true;
+            dragStartPoint = event->pos();
+            dragEndPoint = event->pos();
+            selectionRect = QRect();
+        }
     }
     else if(event->button()==Qt::RightButton){
         statusBar()->showMessage(tr("右鍵:")+str,1000);
@@ -164,4 +183,63 @@ void ImageProcessor::mousePressEvent(QMouseEvent *event){
 void ImageProcessor::mouseReleaseEvent(QMouseEvent *event){
     QString str = "(" + QString::number(event->x()) +", " + QString::number(event->y()) + ")";
     statusBar()->showMessage(tr("釋放:")+str,1000);
+    
+    // Handle drag selection completion
+    if (isDragging && event->button() == Qt::LeftButton) {
+        isDragging = false;
+        dragEndPoint = event->pos();
+        selectionRect = QRect(dragStartPoint, dragEndPoint).normalized();
+        
+        // Check if a valid selection was made
+        if (!img.isNull() && selectionRect.width() > 10 && selectionRect.height() > 10) {
+            // Map selection coordinates to image label coordinates
+            QPoint labelStart = imgWin->mapFrom(this, dragStartPoint);
+            QPoint labelEnd = imgWin->mapFrom(this, dragEndPoint);
+            QRect labelRect = QRect(labelStart, labelEnd).normalized();
+            
+            // Get the image label size and image size
+            QSize labelSize = imgWin->size();
+            QSize imageSize = img.size();
+            
+            // Calculate the scale factor (imgWin has setScaledContents(true))
+            qreal scaleX = (qreal)imageSize.width() / labelSize.width();
+            qreal scaleY = (qreal)imageSize.height() / labelSize.height();
+            
+            // Scale to image coordinates
+            QRect imageRect(
+                labelRect.x() * scaleX,
+                labelRect.y() * scaleY,
+                labelRect.width() * scaleX,
+                labelRect.height() * scaleY
+            );
+            
+            // Ensure the rect is within image bounds
+            imageRect = imageRect.intersected(QRect(0, 0, img.width(), img.height()));
+            
+            if (!imageRect.isEmpty()) {
+                // Extract the selected region
+                QImage zoomedImage = img.copy(imageRect);
+                
+                // Create and show the zoom window
+                ZoomWindow *zoomWin = new ZoomWindow(zoomedImage, this);
+                zoomWin->setAttribute(Qt::WA_DeleteOnClose);  // Ensure proper cleanup
+                zoomWin->show();
+            }
+        }
+        
+        // Clear the selection rectangle
+        selectionRect = QRect();
+        update();
+    }
+}
+
+void ImageProcessor::paintEvent(QPaintEvent *event) {
+    QMainWindow::paintEvent(event);
+    
+    // Draw selection rectangle if dragging
+    if (isDragging && !selectionRect.isEmpty()) {
+        QPainter painter(this);
+        painter.setPen(QPen(Qt::blue, 2, Qt::DashLine));
+        painter.drawRect(selectionRect);
+    }
 }
