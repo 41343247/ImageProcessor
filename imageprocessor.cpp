@@ -222,6 +222,7 @@ void ImageProcessor::mouseReleaseEvent(QMouseEvent *event){
                 
                 // Create and show the zoom window
                 ZoomWindow *zoomWin = new ZoomWindow(zoomedImage, this);
+                zoomWin->setAttribute(Qt::WA_DeleteOnClose);  // Ensure proper cleanup
                 zoomWin->show();
             }
         }
