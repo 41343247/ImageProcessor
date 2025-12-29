@@ -11,6 +11,33 @@
 #include <QPainter>
 #include <QColor>
 
+// Custom QLabel for handling drawing events
+class DrawableLabel : public QLabel
+{
+    Q_OBJECT
+public:
+    DrawableLabel(QWidget *parent = nullptr);
+    void setDrawingEnabled(bool enabled);
+    void setImage(const QImage &image);
+    QImage getImage() const { return drawingImage; }
+
+signals:
+    void imageChanged();
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+
+private:
+    QImage drawingImage;
+    bool drawingEnabled;
+    bool isDrawing;
+    QPoint lastDrawPoint;
+    QColor brushColor;
+    int brushSize;
+};
+
 class ZoomWindow : public QMainWindow
 {
     Q_OBJECT
@@ -25,25 +52,14 @@ private slots:
     void saveImage();
     void toggleBrushTool();
 
-protected:
-    void mousePressEvent(QMouseEvent *event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
-    void paintEvent(QPaintEvent *event) override;
-
 private:
     QImage originalImage;
-    QImage drawingImage;
-    QLabel *imageLabel;
+    DrawableLabel *imageLabel;
     QPushButton *saveButton;
     QPushButton *brushButton;
     QToolBar *toolbar;
     
     bool brushEnabled;
-    bool isDrawing;
-    QPoint lastDrawPoint;
-    QColor brushColor;
-    int brushSize;
 };
 
 #endif // ZOOMWINDOW_H

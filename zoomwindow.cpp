@@ -6,14 +6,74 @@
 #include <QScrollArea>
 #include <QPainter>
 
-ZoomWindow::ZoomWindow(const QImage &image, QWidget *parent)
-    : QMainWindow(parent),
-      originalImage(image),
-      drawingImage(image),
-      brushEnabled(false),
+// DrawableLabel implementation
+DrawableLabel::DrawableLabel(QWidget *parent)
+    : QLabel(parent),
+      drawingEnabled(false),
       isDrawing(false),
       brushColor(Qt::red),
       brushSize(3)
+{
+    setMouseTracking(true);
+}
+
+void DrawableLabel::setDrawingEnabled(bool enabled)
+{
+    drawingEnabled = enabled;
+    if (enabled) {
+        setCursor(Qt::CrossCursor);
+    } else {
+        setCursor(Qt::ArrowCursor);
+    }
+}
+
+void DrawableLabel::setImage(const QImage &image)
+{
+    drawingImage = image;
+    setPixmap(QPixmap::fromImage(drawingImage));
+}
+
+void DrawableLabel::mousePressEvent(QMouseEvent *event)
+{
+    if (drawingEnabled && event->button() == Qt::LeftButton) {
+        isDrawing = true;
+        lastDrawPoint = event->pos();
+    }
+    QLabel::mousePressEvent(event);
+}
+
+void DrawableLabel::mouseMoveEvent(QMouseEvent *event)
+{
+    if (drawingEnabled && isDrawing) {
+        QPoint currentPos = event->pos();
+        
+        // Draw on the image
+        QPainter painter(&drawingImage);
+        painter.setPen(QPen(brushColor, brushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter.drawLine(lastDrawPoint, currentPos);
+        
+        lastDrawPoint = currentPos;
+        
+        // Update the display
+        setPixmap(QPixmap::fromImage(drawingImage));
+        emit imageChanged();
+    }
+    QLabel::mouseMoveEvent(event);
+}
+
+void DrawableLabel::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        isDrawing = false;
+    }
+    QLabel::mouseReleaseEvent(event);
+}
+
+// ZoomWindow implementation
+ZoomWindow::ZoomWindow(const QImage &image, QWidget *parent)
+    : QMainWindow(parent),
+      originalImage(image),
+      brushEnabled(false)
 {
     setWindowTitle(tr("放大影像"));
     
@@ -35,11 +95,10 @@ ZoomWindow::ZoomWindow(const QImage &image, QWidget *parent)
     toolbar->addWidget(brushButton);
     connect(brushButton, SIGNAL(clicked()), this, SLOT(toggleBrushTool()));
     
-    // Create image label
-    imageLabel = new QLabel(this);
+    // Create drawable image label
+    imageLabel = new DrawableLabel(this);
     imageLabel->setAlignment(Qt::AlignCenter);
-    imageLabel->setScaledContents(false);
-    imageLabel->setPixmap(QPixmap::fromImage(drawingImage));
+    imageLabel->setImage(image);
     
     // Create scroll area for the image
     QScrollArea *scrollArea = new QScrollArea(this);
@@ -51,10 +110,6 @@ ZoomWindow::ZoomWindow(const QImage &image, QWidget *parent)
     
     // Set window size
     resize(800, 600);
-    
-    // Enable mouse tracking for brush tool
-    setMouseTracking(true);
-    imageLabel->setMouseTracking(true);
 }
 
 ZoomWindow::~ZoomWindow()
@@ -64,18 +119,18 @@ ZoomWindow::~ZoomWindow()
 void ZoomWindow::setImage(const QImage &image)
 {
     originalImage = image;
-    drawingImage = image;
-    imageLabel->setPixmap(QPixmap::fromImage(drawingImage));
+    imageLabel->setImage(image);
 }
 
 void ZoomWindow::saveImage()
 {
+    QImage currentImage = imageLabel->getImage();
     QString fileName = QFileDialog::getSaveFileName(this,
         tr("另存為影像"), "",
         tr("PNG Files (*.png);;JPEG Files (*.jpg);;BMP Files (*.bmp)"));
     
     if (!fileName.isEmpty()) {
-        if (drawingImage.save(fileName)) {
+        if (currentImage.save(fileName)) {
             QMessageBox::information(this, tr("成功"), tr("影像已儲存"));
         } else {
             QMessageBox::warning(this, tr("錯誤"), tr("無法儲存影像"));
@@ -86,58 +141,10 @@ void ZoomWindow::saveImage()
 void ZoomWindow::toggleBrushTool()
 {
     brushEnabled = brushButton->isChecked();
+    imageLabel->setDrawingEnabled(brushEnabled);
     if (brushEnabled) {
         brushButton->setText(tr("筆刷工具 (啟用)"));
-        setCursor(Qt::CrossCursor);
-        imageLabel->setCursor(Qt::CrossCursor);
     } else {
         brushButton->setText(tr("筆刷工具"));
-        setCursor(Qt::ArrowCursor);
-        imageLabel->setCursor(Qt::ArrowCursor);
     }
-}
-
-void ZoomWindow::mousePressEvent(QMouseEvent *event)
-{
-    if (brushEnabled && event->button() == Qt::LeftButton) {
-        // Map the mouse position to the image label coordinate
-        QPoint labelPos = imageLabel->mapFrom(this, event->pos());
-        
-        // Check if the click is within the image label
-        if (imageLabel->rect().contains(labelPos)) {
-            isDrawing = true;
-            lastDrawPoint = labelPos;
-        }
-    }
-}
-
-void ZoomWindow::mouseMoveEvent(QMouseEvent *event)
-{
-    if (brushEnabled && isDrawing) {
-        QPoint labelPos = imageLabel->mapFrom(this, event->pos());
-        
-        if (imageLabel->rect().contains(labelPos)) {
-            // Draw on the image
-            QPainter painter(&drawingImage);
-            painter.setPen(QPen(brushColor, brushSize, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-            painter.drawLine(lastDrawPoint, labelPos);
-            
-            lastDrawPoint = labelPos;
-            
-            // Update the display
-            imageLabel->setPixmap(QPixmap::fromImage(drawingImage));
-        }
-    }
-}
-
-void ZoomWindow::mouseReleaseEvent(QMouseEvent *event)
-{
-    if (event->button() == Qt::LeftButton) {
-        isDrawing = false;
-    }
-}
-
-void ZoomWindow::paintEvent(QPaintEvent *event)
-{
-    QMainWindow::paintEvent(event);
 }

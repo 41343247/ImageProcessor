@@ -165,7 +165,8 @@ void ImageProcessor::mousePressEvent(QMouseEvent *event){
         statusBar()->showMessage(tr("左鍵:")+str,1000);
         
         // Start drag selection if mouse is over the image
-        if (!img.isNull() && imgWin->geometry().contains(event->pos())) {
+        QPoint labelPos = imgWin->mapFrom(this, event->pos());
+        if (!img.isNull() && imgWin->rect().contains(labelPos)) {
             isDragging = true;
             dragStartPoint = event->pos();
             dragEndPoint = event->pos();
@@ -191,22 +192,25 @@ void ImageProcessor::mouseReleaseEvent(QMouseEvent *event){
         
         // Check if a valid selection was made
         if (!img.isNull() && selectionRect.width() > 10 && selectionRect.height() > 10) {
-            // Map selection coordinates to image coordinates
-            QRect imgRect = imgWin->geometry();
+            // Map selection coordinates to image label coordinates
+            QPoint labelStart = imgWin->mapFrom(this, dragStartPoint);
+            QPoint labelEnd = imgWin->mapFrom(this, dragEndPoint);
+            QRect labelRect = QRect(labelStart, labelEnd).normalized();
             
-            // Calculate the scale factor
-            qreal scaleX = (qreal)img.width() / imgRect.width();
-            qreal scaleY = (qreal)img.height() / imgRect.height();
+            // Get the image label size and image size
+            QSize labelSize = imgWin->size();
+            QSize imageSize = img.size();
             
-            // Adjust selection rect relative to image widget
-            QRect adjustedRect = selectionRect.translated(-imgRect.x(), -imgRect.y());
+            // Calculate the scale factor (imgWin has setScaledContents(true))
+            qreal scaleX = (qreal)imageSize.width() / labelSize.width();
+            qreal scaleY = (qreal)imageSize.height() / labelSize.height();
             
             // Scale to image coordinates
             QRect imageRect(
-                adjustedRect.x() * scaleX,
-                adjustedRect.y() * scaleY,
-                adjustedRect.width() * scaleX,
-                adjustedRect.height() * scaleY
+                labelRect.x() * scaleX,
+                labelRect.y() * scaleY,
+                labelRect.width() * scaleX,
+                labelRect.height() * scaleY
             );
             
             // Ensure the rect is within image bounds
