@@ -7,6 +7,7 @@
 #include <QToolBar>
 #include <QImage>
 #include <QLabel>
+#include "imagetransform.h"
 
 class ImageProcessor : public QMainWindow
 {
@@ -25,8 +26,10 @@ private slots:
     void showOpenFile();
     void bigFile();
     void smallFile();
+    void showGeometryTransform();
 
 private:
+    ImageTransform *gWin;
     QWidget     *central;
     QMenu       *fileMenu;
     QToolBar    *fileTool;
@@ -35,6 +38,7 @@ private:
     QLabel      *imgWin;
     QAction     *openFileAction;
     QAction     *exitAction;
+    QAction     *geometryAction;
 
     QAction     *big;
     QAction     *small;

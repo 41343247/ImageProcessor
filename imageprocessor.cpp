@@ -1,4 +1,5 @@
 #include "imageprocessor.h"
+#include "imagetransform.h"
 #include <QHBoxLayout>
 #include <QMenuBar>
 #include <QFileDialog>
@@ -12,6 +13,7 @@ ImageProcessor::ImageProcessor(QWidget *parent)
     QHBoxLayout *mainLayout = new QHBoxLayout(central);
     imgWin = new QLabel();
     QPixmap *initPixmap = new QPixmap(300,200);
+    gWin = new ImageTransform();
     initPixmap->fill(QColor(255,255,255));
     imgWin->resize(300,200);
     imgWin->setScaledContents(true);
@@ -44,6 +46,12 @@ void ImageProcessor::createActions()
     small = new QAction(tr("縮小"),this);
     exitAction->setStatusTip(tr("縮小"));
     connect(small,SIGNAL(triggered(bool)),this,SLOT(smallFile()));
+
+    geometryAction = new QAction(tr("幾何轉換"),this);
+    geometryAction->setShortcut(tr("Ctrl+G"));
+    geometryAction->setStatusTip(tr("影像幾何轉換"));
+    connect(geometryAction,SIGNAL(triggered(bool)),this,SLOT(showGeometryTransform()));
+    connect(exitAction,SIGNAL(triggered(bool)),gWin,SLOT(close()));
 }
 
 void ImageProcessor::createMenus()
@@ -55,6 +63,8 @@ void ImageProcessor::createMenus()
     fileMenu = menuBar()->addMenu(tr("工具&T"));
     fileMenu->addAction(big);
     fileMenu->addAction(small);
+
+    fileMenu->addAction(geometryAction);
 }
 
 void ImageProcessor::createToolBars()
@@ -65,6 +75,8 @@ void ImageProcessor::createToolBars()
     fileTool = addToolBar("tool");
     fileTool->addAction(big);
     fileTool->addAction(small);
+
+    fileTool->addAction(geometryAction);
 }
 
 void ImageProcessor::loadFile(QString filename)
@@ -105,4 +117,11 @@ void ImageProcessor::smallFile()
         newIPWin->show();
         newIPWin->loadFile(filename);
     }
+}
+
+void ImageProcessor::showGeometryTransform(){
+    if(!img.isNull())
+        gWin->srcImg=img;
+    gWin->inWin->setPixmap(QPixmap::fromImage(gWin->srcImg));
+    gWin->show();
 }
