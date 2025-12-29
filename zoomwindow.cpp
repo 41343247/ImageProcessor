@@ -31,6 +31,8 @@ void DrawableLabel::setImage(const QImage &image)
 {
     drawingImage = image;
     setPixmap(QPixmap::fromImage(drawingImage));
+    // Set fixed size to match image size for proper display
+    setFixedSize(drawingImage.size());
 }
 
 void DrawableLabel::mousePressEvent(QMouseEvent *event)
@@ -98,12 +100,15 @@ ZoomWindow::ZoomWindow(const QImage &image, QWidget *parent)
     // Create drawable image label
     imageLabel = new DrawableLabel(this);
     imageLabel->setAlignment(Qt::AlignCenter);
-    imageLabel->setImage(image);
+    
+    // Scale image to fit window (800x600 minus toolbar)
+    QImage scaledImage = image.scaled(780, 550, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    imageLabel->setImage(scaledImage);
     
     // Create scroll area for the image
     QScrollArea *scrollArea = new QScrollArea(this);
     scrollArea->setWidget(imageLabel);
-    scrollArea->setWidgetResizable(true);
+    scrollArea->setWidgetResizable(false);
     
     mainLayout->addWidget(scrollArea);
     setCentralWidget(centralWidget);
